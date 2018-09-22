@@ -1,19 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta name="viewport" content="width=${WIDTH}, initial-scale=1"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>jsmpeg streaming</title>
 	<style type="text/css">
 		body {
 			background: ${BGCOLOR};
 			text-align: center;
-			margin-top: 10%;
+			/* margin-top: 10%; */
 		}
 		#videoCanvas {
-			/* Always stretch the canvas to 640x480, regardless of its
-			internal size. */
-			width: ${WIDTH}px;
-			height: ${HEIGHT}px;
+			/* min-width: ${WIDTH}px; */
+			max-width: 100%;
+			max-height: 100vh;
+			width: auto;
+			height: auto;
 		}
 	</style>
 </head>
@@ -36,7 +37,7 @@
 		var canvas = document.getElementById('videoCanvas');
 		var ctx = canvas.getContext('2d');
 		ctx.fillStyle = '${COLOR}';
-		ctx.fillText('Loading...', canvas.width/2-30, canvas.height/3);
+		ctx.fillText('Loading...', 0, 0);
 
 		// Setup the WebSocket connection and start the player
 		var client = new WebSocket('ws://${ADDRESS}/');

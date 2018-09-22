@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+##!/usr/bin/env python
 
 import sys
 import io
@@ -19,9 +19,25 @@ from ws4py.server.wsgiutils import WebSocketWSGIApplication
 
 ###########################################
 # CONFIGURATION
-WIDTH = 640
-HEIGHT = 480
-FRAMERATE = 24
+CAMERA_MODE = 0
+
+WIDTH = 320
+HEIGHT = 240
+FRAMERATE = 30
+
+#WIDTH = 1664
+#HEIGHT = 928
+#WIDTH = 1024
+#HEIGHT = 576
+#WIDTH = 1280
+#HEIGHT = 800
+#WIDTH = 960
+#HEIGHT = 720
+#FRAMERATE = 4
+
+#BANDWIDTH = '800k'
+BANDWIDTH = '3000k'
+
 HTTP_PORT = 8082
 WS_PORT = 8084
 ROTATION=0
@@ -50,7 +66,7 @@ class StreamingHttpHandler(BaseHTTPRequestHandler):
             tpl = Template(self.server.index_template)
             content = tpl.safe_substitute(dict(
                 ADDRESS='%s:%d' % (self.request.getsockname()[0], WS_PORT),
-                WIDTH=WIDTH, HEIGHT=HEIGHT, COLOR=COLOR, BGCOLOR=BGCOLOR))
+                WIDTH=WIDTH, COLOR=COLOR, BGCOLOR=BGCOLOR))
         else:
             self.send_error(404, 'File not found')
             return
@@ -82,18 +98,23 @@ class StreamingWebSocket(WebSocket):
 class BroadcastOutput(object):
     def __init__(self, camera):
         print('Spawning background conversion process')
+        print('Using FPS: ', str(float(camera.framerate)))
         self.converter = Popen([
             'avconv',
             '-f', 'rawvideo',
             '-pix_fmt', 'yuv420p',
             '-s', '%dx%d' % camera.resolution,
-            '-r', str(float(camera.framerate)),
+            #'-r', str(float(camera.framerate)),
             '-i', '-',
+            #'-vf', 'scale=%d:%d' % (DST_WIDTH, DST_HEIGHT),
             '-f', 'mpeg1video',
-            '-b', '800k',
-            '-r', str(float(camera.framerate)),
+	    #'-f', 'mpeg2video',
+            #'-f', 'h264_omx',
+            '-b', BANDWIDTH,
+            #'-r', str(float(camera.framerate)),
             '-'],
             stdin=PIPE, stdout=PIPE, stderr=io.open(os.devnull, 'wb'),
+            #stdin=PIPE, stdout=PIPE,
             shell=False, close_fds=True)
 
     def write(self, b):
@@ -125,7 +146,9 @@ class BroadcastThread(Thread):
 
 def main():
     print('Initializing camera')
-    with picamera.PiCamera() as camera:
+    cameraMode = int(CAMERA_MODE)
+    print("Camera Mode: ", cameraMode)
+    with picamera.PiCamera(sensor_mode=cameraMode) as camera:
         camera.resolution = (WIDTH, HEIGHT)
         camera.framerate = FRAMERATE
         camera.rotation = ROTATION
@@ -145,9 +168,7 @@ def main():
         output = BroadcastOutput(camera)
         broadcast_thread = BroadcastThread(output.converter, websocket_server)
         print('Starting recording')
-        #camera.start_recording(output, 'yuv')
-        camera.start_recording(stream, format='h264', quality=23)
-
+        camera.start_recording(output, 'yuv')
         try:
             print('Starting websockets thread')
             websocket_thread.start()
